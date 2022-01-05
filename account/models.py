@@ -40,7 +40,7 @@ class User(AbstractBaseUser):
 
     def generate_activation_code(self):
         from django.utils.crypto import get_random_string
-        code = get_random_string(8)
+        code = get_random_string(6)
         self.activation_code = code
         self.save()
         return code
@@ -49,7 +49,7 @@ class User(AbstractBaseUser):
     def send_activation_mail(email, code):
         from django.core.mail import send_mail
         message = f'Ваш код активации: {code}'
-        send_mail('Активация аккаунта', message, 'test@gmail.com', email)
+        send_mail('Активация аккаунта', message, 'test@gmail.com', [email])
 
     def has_module_perms(self, app_label):
         return self.is_staff
