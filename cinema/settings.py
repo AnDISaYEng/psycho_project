@@ -129,7 +129,3 @@ REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 5,
 }
-
-# TWILIO_NUMBER = '+12676997799'
-# TWILIO_SID = 'AC4776238c50f93ec019d454cdafdbe1d2'
-# TWILIO_AUTH_TOKEN = '6ee63c3bb77796dbdb941771500c334d'
