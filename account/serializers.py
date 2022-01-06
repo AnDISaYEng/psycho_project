@@ -23,7 +23,7 @@ class RegistrationSerializer(serializers.Serializer):
         password_confirmation = attrs.pop('password_confirmation')
         if password != password_confirmation:
             raise serializers.ValidationError('Пароли не совпадают')
-        return password
+        return attrs
 
     def create(self):
         attrs = self.validated_data
@@ -37,13 +37,13 @@ class ActivationSerializer(serializers.Serializer):
     code = serializers.CharField(min_length=6, max_length=6, required=True)
 
     def validate_code(self, code):
-        if not User.objects.get(activation_code=code).exists():
+        if not User.objects.filter(activation_code=code).exists():
             raise serializers.ValidationError('Пользователь не найден')
         return code
 
     def activate(self):
-        email = self.validated_data.get('email')
-        user = User.objects.get(email=email)
+        code = self.validated_data.get('code')
+        user = User.objects.get(activation_code=code)
         user.is_active = True
         user.activation_code = ''
         user.save()
@@ -70,7 +70,7 @@ class LoginSerializer(serializers.Serializer):
         else:
             raise serializers.ValidationError('Почта и пароль обязательны')
         attrs['user'] = user
-        return user
+        return attrs
 
 
 

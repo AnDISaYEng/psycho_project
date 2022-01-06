@@ -1,20 +1,7 @@
+from django.contrib.auth import get_user_model
 from django.db import models
 
-
-class Anime(models.Model):
-    name = models.CharField(max_length=50)
-    slug = models.SlugField(max_length=50, primary_key=True)
-
-    def __str__(self):
-        return self.name
-
-
-class Season(models.Model):
-    number = models.PositiveIntegerField()
-    anime = models.ForeignKey(Anime, on_delete=models.CASCADE, related_name='seasons')
-
-    def __str__(self):
-        return self.number
+User = get_user_model()
 
 
 class Genre(models.Model):
@@ -25,6 +12,23 @@ class Genre(models.Model):
         return self.name
 
 
+class Anime(models.Model):
+    name = models.CharField(max_length=50)
+    slug = models.SlugField(max_length=50, primary_key=True)
+    genre = models.ManyToManyField(Genre)
+
+    def __str__(self):
+        return self.name
+
+
+class Season(models.Model):
+    number = models.PositiveIntegerField(primary_key=True)
+    anime = models.ForeignKey(Anime, on_delete=models.CASCADE, related_name='seasons')
+
+    def __str__(self):
+        return f'{self.number} сезон'
+
+
 class Episode(models.Model):
     name = models.CharField(max_length=50)
     number = models.PositiveIntegerField()
@@ -32,7 +36,11 @@ class Episode(models.Model):
     video = models.FileField()
     anime = models.ForeignKey(Anime, on_delete=models.CASCADE, related_name='episodes')
     season = models.ForeignKey(Season, on_delete=models.CASCADE, related_name='episodes')
-    genre = models.ManyToManyField(Genre)
 
     def __str__(self):
         return f'{self.number} серия'
+
+
+class Favorites(models.Model):
+    anime = models.ForeignKey(Anime, on_delete=models.CASCADE, related_name='favorites')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='favorites')
