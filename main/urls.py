@@ -2,12 +2,13 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 
 from .views import AnimeViewSet, GenreViewSet, EpisodeView, FavoritesListView, SeasonCreate, FavoritesCreateView, \
-    FavoritesDestroyView
+    FavoritesDestroyView, ReviewViewSet
 
 router = DefaultRouter()
 router.register('anime', AnimeViewSet)
 router.register('genre', GenreViewSet)
 router.register('episode', EpisodeView)
+router.register('review', ReviewViewSet)
 
 urlpatterns = [
     path('', include(router.urls)),

@@ -1,13 +1,13 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
-from .models import Anime, Genre, Episode, Season, Favorites
+from . import likes_services
+from .models import Anime, Genre, Episode, Season, Favorites, Review
 
 User = get_user_model()
 
-class AnimeSerializer(serializers.ModelSerializer):
-    # genre = serializers.CharField(source='genre.name')
 
+class AnimeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Anime
         fields = ['name', 'seasons', 'genre', 'slug']
@@ -15,7 +15,19 @@ class AnimeSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         representation = super().to_representation(instance)
         representation.pop('slug')
+        representation['rating_count'] = instance.comments.all().count()
+        representation['rating_average'] = ReviewSerializer(instance.comments.all(), many=True).data
+        fl = 0
+        for ordered_dict in representation['rating_average']:
+            fl += ordered_dict.get('rating')
+        representation['rating_average'] = fl/instance.comments.all().count()
         return representation
+
+
+class FanSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['email']
 
 
 class GenreSerializer(serializers.ModelSerializer):
@@ -25,9 +37,20 @@ class GenreSerializer(serializers.ModelSerializer):
 
 
 class EpisodeSerializer(serializers.ModelSerializer):
+    is_like = serializers.SerializerMethodField()
+
     class Meta:
         model = Episode
-        fields = '__all__'  # ['name', 'number', 'preview', 'video', 'anime', 'season']
+        fields = ['anime', 'season', 'number', 'name', 'preview', 'video', 'is_like', ]
+
+    def get_is_like(self, post):
+        user = self.context.get('request').user
+        return likes_services.is_like(post, user)
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        representation['likes_count'] = likes_services.get_likes_user(instance).count()
+        return representation
 
 
 class SeasonSerializer(serializers.ModelSerializer):
@@ -81,12 +104,30 @@ class FavoritesSerializer(serializers.ModelSerializer):
         favorites_queryset = [favorites_queryset[i] for i in range(len(favorites_queryset))]
         favorites = [str(favorites_queryset[i]) for i in range(len(favorites_queryset))]
         if str(anime) in favorites:
-            raise serializers.ValidationError('Вы уже добавили anime в избранное')
+            raise serializers.ValidationError('Вы уже добавили anim/leave_review/e в избранное')
         return attrs
 
     def create(self, validated_data):
         return super().create(validated_data)
 
 
-class ReviewSerializer(serializers.Serializer):
-    pass
+class ReviewSerializer(serializers.ModelSerializer):
+    # text = serializers.CharField(max_length=350)
+    # rating = serializers.IntegerField(required=True)
+    # anime = serializers.CharField(max_length=50, required=True)
+    class Meta:
+        model = Review
+        fields = ['text', 'rating', 'anime']
+
+    def validate_rating(self, rating):
+        if rating not in [1, 2, 3, 4, 5]:
+            raise serializers.ValidationError('Рейтинг может быть только от одного до пяти')
+        return rating
+
+    def create(self, validated_data):
+        validated_data['author'] = self.context.get('request').user
+        return super().create(validated_data)
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        return representation
