@@ -22,8 +22,10 @@ class Anime(models.Model):
 
 
 class Season(models.Model):
-    number = models.PositiveIntegerField(primary_key=True)
     anime = models.ForeignKey(Anime, on_delete=models.CASCADE, related_name='seasons')
+    number = models.PositiveIntegerField()
+    name = models.CharField(max_length=50)
+    slug = models.SlugField(max_length=50, primary_key=True)
 
     def __str__(self):
         return f'{self.number} сезон'
@@ -44,3 +46,6 @@ class Episode(models.Model):
 class Favorites(models.Model):
     anime = models.ForeignKey(Anime, on_delete=models.CASCADE, related_name='favorites')
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='favorites')
+
+    def __str__(self):
+        return self.anime.name

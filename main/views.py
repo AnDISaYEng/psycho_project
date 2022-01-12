@@ -1,11 +1,11 @@
 from rest_framework.decorators import action
-from rest_framework.generics import GenericAPIView
+from rest_framework.generics import GenericAPIView, CreateAPIView, DestroyAPIView, ListAPIView
 from rest_framework.mixins import CreateModelMixin, RetrieveModelMixin, DestroyModelMixin, ListModelMixin
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.viewsets import ModelViewSet
+from rest_framework.viewsets import ModelViewSet, GenericViewSet
 
-from .models import Anime, Genre, Episode, Favorites
+from .models import Anime, Genre, Episode, Favorites, Season
 from .permissions import IsAdmin
 from .serializers import AnimeSerializer, SeasonSerializer, EpisodeSerializer, GenreSerializer, FavoritesSerializer, \
     FavoritesListSerializer
@@ -39,16 +39,28 @@ class AnimeViewSet(ModelViewSet):
         return [IsAdmin()]
 
 
+class SeasonCreate(CreateAPIView):
+    queryset = Season.objects.all()
+    serializer_class = SeasonSerializer
+    permission_classes = [IsAdmin]
+
+
 class GenreViewSet(ModelViewSet):
     # Добавить/удалить/просмотреть_список жанров
     queryset = Genre.objects.all()
     serializer_class = GenreSerializer
 
+    def get_permissions(self):
+        if self.action == 'list':
+            return []
+        return [IsAdmin()]
 
-class EpisodeView(CreateModelMixin, DestroyModelMixin, GenericAPIView):
+
+class EpisodeView(CreateModelMixin, DestroyModelMixin, GenericViewSet):
     # Добавить/удалить/просмотреть_список(action) серий к аниме
     queryset = Episode.objects.all()
     serializer_class = EpisodeSerializer
+    permission_classes = [IsAdmin]
 
 
 class ReviewViewSet(ModelViewSet):
@@ -56,13 +68,23 @@ class ReviewViewSet(ModelViewSet):
     pass
 
 
-class FavoritesView(CreateModelMixin, ListModelMixin, DestroyModelMixin, GenericAPIView):
+class FavoritesListView(ListAPIView):
     queryset = Favorites.objects.all()
-    serializer_class = FavoritesSerializer
     permission_classes = [IsAuthenticated]
+    serializer_class = FavoritesListSerializer
 
     def get(self, request):
         data = request.data
         serializer = FavoritesListSerializer(data=data, context={'request': request})
         serializer.is_valid(raise_exception=True)
         return Response(serializer.data)
+
+
+class FavoritesCreateView(CreateAPIView):
+    queryset = Favorites.objects.all()
+    serializer_class = FavoritesSerializer
+
+
+class FavoritesDestroyView(DestroyAPIView):
+    queryset = Favorites.objects.all()
+    serializer_class = FavoritesSerializer
