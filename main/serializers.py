@@ -17,11 +17,14 @@ class AnimeSerializer(serializers.ModelSerializer):
         representation.pop('slug')
         representation['rating_count'] = instance.comments.all().count()
         representation['rating_average'] = ReviewSerializer(instance.comments.all(), many=True).data
-        fl = 0
-        for ordered_dict in representation['rating_average']:
-            fl += ordered_dict.get('rating')
-        representation['rating_average'] = fl/instance.comments.all().count()
-        return representation
+        try:
+            fl = 0
+            for ordered_dict in representation['rating_average']:
+                fl += ordered_dict.get('rating')
+            representation['rating_average'] = fl/instance.comments.all().count()
+            return representation
+        except ZeroDivisionError:
+            return representation
 
 
 class FanSerializer(serializers.ModelSerializer):
@@ -104,7 +107,7 @@ class FavoritesSerializer(serializers.ModelSerializer):
         favorites_queryset = [favorites_queryset[i] for i in range(len(favorites_queryset))]
         favorites = [str(favorites_queryset[i]) for i in range(len(favorites_queryset))]
         if str(anime) in favorites:
-            raise serializers.ValidationError('Вы уже добавили anim/leave_review/e в избранное')
+            raise serializers.ValidationError('Вы уже добавили anime в избранное')
         return attrs
 
     def create(self, validated_data):
@@ -123,6 +126,18 @@ class ReviewSerializer(serializers.ModelSerializer):
         if rating not in [1, 2, 3, 4, 5]:
             raise serializers.ValidationError('Рейтинг может быть только от одного до пяти')
         return rating
+
+    def validate(self, attrs):
+        author = self.context.get('request').user
+        anime = attrs.get('anime')
+        try:
+            rating = Review.objects.filter(author=author)[0]
+            reviews = Review.objects.filter(anime=anime)
+            if rating in reviews:
+                raise serializers.ValidationError('Вы уже оставили отзыв')
+            return attrs
+        except IndexError:
+            return attrs
 
     def create(self, validated_data):
         validated_data['author'] = self.context.get('request').user

@@ -67,3 +67,6 @@ class Review(models.Model):
     author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='comments')
     text = models.CharField(max_length=350)
     rating = models.IntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)])
+
+    def __str__(self):
+        return f'{self.author}: {self.rating}'

@@ -57,7 +57,7 @@ class AnimeViewSet(ModelViewSet):
         serializer = EpisodeSerializer(episodes, context={'request': request}, many=True)
         return Response(serializer.data)
 
-    @action(['POST'], detail=True)
+    @action(['GET'], detail=True)
     def reviews(self, request, pk):
         anime = self.get_object()
         reviews = anime.comments.all()
