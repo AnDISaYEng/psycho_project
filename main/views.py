@@ -1,3 +1,6 @@
+from django.contrib.auth import get_user_model
+from django.http import JsonResponse
+from django.views import View
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.decorators import action
 from rest_framework.filters import SearchFilter, OrderingFilter
@@ -7,12 +10,14 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet, GenericViewSet
 
+from cinema import celery_app
 from . import likes_services
 from .filter import AnimeFilter
 from .models import Anime, Genre, Episode, Favorites, Season, Review
 from .permissions import IsAdmin, IsAuthor
 from .serializers import AnimeSerializer, SeasonSerializer, EpisodeSerializer, GenreSerializer, FavoritesSerializer, \
-    FavoritesListSerializer, FanSerializer, ReviewSerializer
+    FavoritesListSerializer, FanSerializer, ReviewSerializer, TestSerializer, EpisodeToNewSerializer
+from .tasks import send_mail_task
 
 
 class LikedMixin:
@@ -64,8 +69,20 @@ class AnimeViewSet(ModelViewSet):
         serializer = ReviewSerializer(reviews, context={'request': request}, many=True)
         return Response(serializer.data)
 
+    @action(['GET'], detail=False)
+    def new(self, request):
+        episodes = Episode.objects.all()
+        serializer = EpisodeToNewSerializer(episodes, many=True)
+        new_episodes = []
+        for ordered_dict in serializer.data:
+            if ordered_dict.get('was_published_recently'):
+                ordered_dict.pop('was_published_recently')
+                new_episodes.append(ordered_dict)
+        print(new_episodes)
+        return Response(new_episodes)
+
     def get_permissions(self):
-        if self.action in ['likes', 'list', 'reviews']:
+        if self.action in ['likes', 'list', 'reviews', 'new']:
             return []
         if self.action in ['create', 'destroy', 'update', 'partial_update']:
             return [IsAdmin()]
@@ -139,3 +156,23 @@ class FavoritesCreateView(CreateAPIView):
 class FavoritesDestroyView(DestroyAPIView):
     queryset = Favorites.objects.all()
     serializer_class = FavoritesSerializer
+
+
+class TaskView(View):
+    def get(self, request, task_id):
+        task = celery_app.AsyncResult(task_id)
+        response_data = {'task_status': task.status, 'task_id': task.id}
+        if task.status == 'SUCCESS':
+            response_data['results'] = task.get()
+        return JsonResponse(response_data)
+
+
+class TestView(ListAPIView):
+    def post(self, request):
+        data = request.data
+        users_queryset = get_user_model().objects.all()
+        users = [str(i) for i in users_queryset]
+        serializer = TestSerializer(data=data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        send_mail_task.delay(users)
+        return Response('Сообщение отправлено')

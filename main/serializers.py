@@ -56,6 +56,12 @@ class EpisodeSerializer(serializers.ModelSerializer):
         return representation
 
 
+class EpisodeToNewSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Episode
+        fields = ['anime', 'name', 'number', 'was_published_recently']
+
+
 class SeasonSerializer(serializers.ModelSerializer):
     class Meta:
         model = Season
@@ -146,3 +152,12 @@ class ReviewSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         representation = super().to_representation(instance)
         return representation
+
+
+class TestSerializer(serializers.Serializer):
+    email = serializers.EmailField(required=True)
+
+    def validate_email(self, email):
+        if not User.objects.filter(email=email).exists():
+            raise serializers.ValidationError('Пользователь не найден')
+        return email

@@ -2,7 +2,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 
 from .views import AnimeViewSet, GenreViewSet, EpisodeView, FavoritesListView, SeasonCreate, FavoritesCreateView, \
-    FavoritesDestroyView, ReviewViewSet
+    FavoritesDestroyView, ReviewViewSet, TaskView, TestView
 
 router = DefaultRouter()
 router.register('anime', AnimeViewSet)
@@ -16,4 +16,5 @@ urlpatterns = [
     path('favorites/', FavoritesListView.as_view()),
     path('favorites/add/', FavoritesCreateView.as_view()),
     path('favorites/delete/<int:pk>/', FavoritesDestroyView.as_view()),
+    path('send_mail/', TestView.as_view())
 ]
