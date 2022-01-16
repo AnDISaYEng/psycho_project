@@ -54,8 +54,9 @@ class Episode(models.Model):
     likes = GenericRelation(Like)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    @property
     def __str__(self):
-        return f'{self.anime}: {self.number} серия'
+        return f'{self.anime}: {self.name}({self.number} серия)'
 
     @property
     def was_published_recently(self):

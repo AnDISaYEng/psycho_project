@@ -59,7 +59,7 @@ class EpisodeSerializer(serializers.ModelSerializer):
 class EpisodeToNewSerializer(serializers.ModelSerializer):
     class Meta:
         model = Episode
-        fields = ['anime', 'name', 'number', 'was_published_recently']
+        fields = ['was_published_recently', '__str__']
 
 
 class SeasonSerializer(serializers.ModelSerializer):

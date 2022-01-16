@@ -77,7 +77,7 @@ class AnimeViewSet(ModelViewSet):
         for ordered_dict in serializer.data:
             if ordered_dict.get('was_published_recently'):
                 ordered_dict.pop('was_published_recently')
-                new_episodes.append(ordered_dict)
+                new_episodes.append(ordered_dict.get('__str__'))
         print(new_episodes)
         return Response(new_episodes)
 
@@ -168,11 +168,14 @@ class TaskView(View):
 
 
 class TestView(ListAPIView):
+    permission_classes = [IsAdmin]
+
     def post(self, request):
         data = request.data
         users_queryset = get_user_model().objects.all()
         users = [str(i) for i in users_queryset]
         serializer = TestSerializer(data=data, context={'request': request})
         serializer.is_valid(raise_exception=True)
+        print(users)
         send_mail_task.delay(users)
         return Response('Сообщение отправлено')
