@@ -8,12 +8,13 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet, GenericViewSet
 
+import parser_top100
 from . import likes_services
 from .filter import AnimeFilter
 from .models import Anime, Genre, Episode, Favorites, Season, Review
 from .permissions import IsAdmin, IsAuthor, IsAuthorFavorites
 from .serializers import AnimeSerializer, SeasonSerializer, EpisodeSerializer, GenreSerializer, FavoritesSerializer, \
-    FavoritesListSerializer, FanSerializer, ReviewSerializer, EpisodeToNewSerializer
+    FavoritesListSerializer, FanSerializer, ReviewSerializer, EpisodeToNewSerializer, TopSerializer
 from .tasks import send_mail_task
 
 
@@ -152,21 +153,16 @@ class FavoritesViewSet(CreateModelMixin, DestroyModelMixin, ListModelMixin, Gene
         return [IsAuthorFavorites()]
 
 
-# class FavoritesCreateView(CreateAPIView):
-#     queryset = Favorites.objects.all()
-#     serializer_class = FavoritesSerializer
-#
-#
-# class FavoritesDestroyView(DestroyAPIView):
-#     queryset = Favorites.objects.all()
-#     serializer_class = FavoritesSerializer
-
-
 class SendMailView(ListAPIView):
     permission_classes = [IsAdmin]
 
-    def post(self, request):
+    def list(self, request):
         users_queryset = get_user_model().objects.all()
         users = [str(i) for i in users_queryset]
         send_mail_task.delay(users)
         return Response('Сообщение отправлено')
+
+
+class TopView(ListAPIView):
+    def get(self, request):
+        return Response(parser_top100.main())

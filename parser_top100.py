@@ -23,20 +23,27 @@ def get_cards(soup):
 
 def get_data(cards):
     title = cards.find('div', class_='kino-title').find('a').text
-    place = cards.find('div', class_='kino-inner').find('div', class_='kino-img').find('div', class_='k-meta qual-mark').text
-    return {'Название': title, 'Место': place}
+    place = cards.find('div', class_='kino-inner').find('div', class_='kino-img').find('div',
+                                                                                       class_='k-meta qual-mark').text
+    return {'title': title}
 
 
 def main():
+    cards1 = []
     page = open_page(main_url)
     soup = get_soup(page)
-    print(soup)
-    cards = get_cards(soup)
+    cards2 = get_cards(soup)
+    cards1.extend(cards2)
     data = []
-    for card in cards:
+    for card in cards1:
         data.append(get_data(card))
-    top = json.dumps(data, ensure_ascii=False, indent=2)
-    return top
+    top = json.dumps(data, ensure_ascii=False)
+    s = []
+    for i in data:
+        for v in i.values():
+            v.replace('n', '')
+            s.append(v[1:-1])
+    return s
 
 
 main()

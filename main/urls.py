@@ -2,7 +2,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 
 from .views import AnimeViewSet, GenreViewSet, EpisodeView, FavoritesViewSet, SeasonCreate, \
-    ReviewViewSet, SendMailView
+    ReviewViewSet, SendMailView, TopView
 
 router = DefaultRouter()
 router.register('anime', AnimeViewSet)
@@ -15,4 +15,5 @@ urlpatterns = [
     path('', include(router.urls)),
     path('add_season/', SeasonCreate.as_view()),
     path('send_mail/', SendMailView.as_view()),
+    path('top/', TopView.as_view())
 ]

@@ -81,7 +81,6 @@ class FavoritesListSerializer(serializers.ModelSerializer):
 
 
 class FavoritesSerializer(serializers.ModelSerializer):
-    # anime = serializers.SlugField(required=True, max_length=50)
     class Meta:
         model = Favorites
         fields = ['anime', 'id']
@@ -126,3 +125,8 @@ class ReviewSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         validated_data['author'] = self.context.get('request').user
         return super().create(validated_data)
+
+
+class TopSerializer(serializers.Serializer):
+    Title = serializers.CharField(max_length=500)
+    Place = serializers.CharField(max_length=100)
