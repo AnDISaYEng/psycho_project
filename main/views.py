@@ -1,22 +1,19 @@
 from django.contrib.auth import get_user_model
-from django.http import JsonResponse
-from django.views import View
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.decorators import action
 from rest_framework.filters import SearchFilter, OrderingFilter
-from rest_framework.generics import GenericAPIView, CreateAPIView, DestroyAPIView, ListAPIView
-from rest_framework.mixins import CreateModelMixin, RetrieveModelMixin, DestroyModelMixin, ListModelMixin
+from rest_framework.generics import CreateAPIView, ListAPIView
+from rest_framework.mixins import CreateModelMixin, DestroyModelMixin, ListModelMixin
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet, GenericViewSet
 
-from cinema import celery_app
 from . import likes_services
 from .filter import AnimeFilter
 from .models import Anime, Genre, Episode, Favorites, Season, Review
-from .permissions import IsAdmin, IsAuthor
+from .permissions import IsAdmin, IsAuthor, IsAuthorFavorites
 from .serializers import AnimeSerializer, SeasonSerializer, EpisodeSerializer, GenreSerializer, FavoritesSerializer, \
-    FavoritesListSerializer, FanSerializer, ReviewSerializer, TestSerializer, EpisodeToNewSerializer
+    FavoritesListSerializer, FanSerializer, ReviewSerializer, EpisodeToNewSerializer
 from .tasks import send_mail_task
 
 
@@ -96,7 +93,6 @@ class SeasonCreate(CreateAPIView):
 
 
 class GenreViewSet(ModelViewSet):
-    # Добавить/удалить/просмотреть_список жанров
     queryset = Genre.objects.all()
     serializer_class = GenreSerializer
 
@@ -120,7 +116,6 @@ class EpisodeView(CreateModelMixin, DestroyModelMixin, GenericViewSet, LikedMixi
 
 
 class ReviewViewSet(ModelViewSet):
-    # Добавить/удалить/просмотреть_список(action) отзыв(-ов) к аниме
     queryset = Review.objects.all()
     serializer_class = ReviewSerializer
     permission_classes = [IsAuthenticated]
@@ -133,46 +128,45 @@ class ReviewViewSet(ModelViewSet):
         return [IsAdmin()]
 
 
-class FavoritesListView(ListAPIView):
+class FavoritesViewSet(CreateModelMixin, DestroyModelMixin, ListModelMixin, GenericViewSet):
     queryset = Favorites.objects.all()
     permission_classes = [IsAuthenticated]
     serializer_class = FavoritesListSerializer
 
-    def get(self, request):
-        data = request.data
-        serializer = FavoritesListSerializer(data=data, context={'request': request})
-        serializer.is_valid(raise_exception=True)
+    def list(self, request):
+        user = request.user
+        favorites = Favorites.objects.filter(user=user)
+        serializer = FavoritesListSerializer(favorites, many=True)
         return Response(serializer.data)
 
+    def create(self, request):
+        data = request.data
+        serializer = FavoritesSerializer(data=data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        serializer.create()
+        return Response(serializer.data)
 
-class FavoritesCreateView(CreateAPIView):
-    queryset = Favorites.objects.all()
-    serializer_class = FavoritesSerializer
-
-
-class FavoritesDestroyView(DestroyAPIView):
-    queryset = Favorites.objects.all()
-    serializer_class = FavoritesSerializer
-
-
-class TaskView(View):
-    def get(self, request, task_id):
-        task = celery_app.AsyncResult(task_id)
-        response_data = {'task_status': task.status, 'task_id': task.id}
-        if task.status == 'SUCCESS':
-            response_data['results'] = task.get()
-        return JsonResponse(response_data)
+    def get_permissions(self):
+        if self.action in ['create', 'list']:
+            return [IsAuthenticated()]
+        return [IsAuthorFavorites()]
 
 
-class TestView(ListAPIView):
+# class FavoritesCreateView(CreateAPIView):
+#     queryset = Favorites.objects.all()
+#     serializer_class = FavoritesSerializer
+#
+#
+# class FavoritesDestroyView(DestroyAPIView):
+#     queryset = Favorites.objects.all()
+#     serializer_class = FavoritesSerializer
+
+
+class SendMailView(ListAPIView):
     permission_classes = [IsAdmin]
 
     def post(self, request):
-        data = request.data
         users_queryset = get_user_model().objects.all()
         users = [str(i) for i in users_queryset]
-        serializer = TestSerializer(data=data, context={'request': request})
-        serializer.is_valid(raise_exception=True)
-        print(users)
         send_mail_task.delay(users)
         return Response('Сообщение отправлено')

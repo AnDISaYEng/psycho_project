@@ -18,6 +18,6 @@ def send_mail_task(users):
             ordered_dict.pop('was_published_recently')
             new_episodes.append(ordered_dict.get('string_for_new'))
     while True:
-        time.sleep(10)
+        time.sleep(40)
         send_mail('Новые серии', f'За прошлый день вышли серии: {new_episodes}', 'test@gmail.com', users)
 

@@ -74,40 +74,20 @@ class SeasonSerializer(serializers.ModelSerializer):
         return representation
 
 
-class FavoritesListSerializer(serializers.Serializer):
-    user = serializers.EmailField(required=True)
-
-    def validate_email(self, email):
-        if not User.objects.filter(email=email).exists():
-            raise serializers.ValidationError('Пользователь не найден')
-        return email
-
-    def validate(self, attrs):
-        user = attrs.get('user')
-        favorites_queryset = Favorites.objects.filter(user=user)
-        favorites_queryset = [favorites_queryset[i] for i in range(len(favorites_queryset))]
-        favorites = [str(favorites_queryset[i]) for i in range(len(favorites_queryset))]
-        attrs['user'] = favorites
-        return attrs
+class FavoritesListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Favorites
+        fields = ['anime']
 
 
 class FavoritesSerializer(serializers.ModelSerializer):
+    # anime = serializers.SlugField(required=True, max_length=50)
     class Meta:
         model = Favorites
-        fields = '__all__'
-
-    def validate_email(self, email):
-        if not User.objects.filter(email=email).exists():
-            raise serializers.ValidationError('Пользователь не найден')
-        return email
-
-    def validate_anime(self, anime):
-        if not Anime.objects.filter(name=anime).exists():
-            raise serializers.ValidationError('Такого поста не существует')
-        return anime
+        fields = ['anime', 'id']
 
     def validate(self, attrs):
-        user = attrs.get('user')
+        user = self.context.get('request').user
         anime = attrs.get('anime')
         favorites_queryset = Favorites.objects.filter(user=user)
         favorites_queryset = [favorites_queryset[i] for i in range(len(favorites_queryset))]
@@ -116,14 +96,12 @@ class FavoritesSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError('Вы уже добавили anime в избранное')
         return attrs
 
-    def create(self, validated_data):
-        return super().create(validated_data)
+    def create(self):
+        self.validated_data['user'] = self.context.get('request').user
+        return super().create(self.validated_data)
 
 
 class ReviewSerializer(serializers.ModelSerializer):
-    # text = serializers.CharField(max_length=350)
-    # rating = serializers.IntegerField(required=True)
-    # anime = serializers.CharField(max_length=50, required=True)
     class Meta:
         model = Review
         fields = ['text', 'rating', 'anime']
@@ -148,16 +126,3 @@ class ReviewSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         validated_data['author'] = self.context.get('request').user
         return super().create(validated_data)
-
-    def to_representation(self, instance):
-        representation = super().to_representation(instance)
-        return representation
-
-
-class TestSerializer(serializers.Serializer):
-    email = serializers.EmailField(required=True)
-
-    def validate_email(self, email):
-        if not User.objects.filter(email=email).exists():
-            raise serializers.ValidationError('Пользователь не найден')
-        return email
