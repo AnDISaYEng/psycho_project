@@ -21,6 +21,7 @@ urlpatterns = [
     path('docs/', schema_view.with_ui('swagger')),
     path('account/', include('account.urls')),
     path('main/', include('main.urls')),
+    path('news/', include('news.urls')),
 ]
 
 if settings.DEBUG:

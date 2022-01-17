@@ -35,6 +35,7 @@ INSTALLED_APPS = [
 
     'account',
     'main',
+    'news',
 ]
 
 MIDDLEWARE = [

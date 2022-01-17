@@ -77,7 +77,7 @@ class AnimeViewSet(ModelViewSet):
         for ordered_dict in serializer.data:
             if ordered_dict.get('was_published_recently'):
                 ordered_dict.pop('was_published_recently')
-                new_episodes.append(ordered_dict.get('__str__'))
+                new_episodes.append(ordered_dict.get('string_for_new'))
         print(new_episodes)
         return Response(new_episodes)
 
@@ -110,9 +110,6 @@ class EpisodeView(CreateModelMixin, DestroyModelMixin, GenericViewSet, LikedMixi
     queryset = Episode.objects.all()
     serializer_class = EpisodeSerializer
     permission_classes = [IsAdmin]
-
-    def get(self, request):
-        data = request.data
 
     def get_permissions(self):
         if self.action in ['like', 'unlike']:
