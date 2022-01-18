@@ -1,18 +1,21 @@
+from django.contrib.auth import get_user_model
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.decorators import action
 from rest_framework.filters import SearchFilter, OrderingFilter
-from rest_framework.generics import GenericAPIView, CreateAPIView, DestroyAPIView, ListAPIView
-from rest_framework.mixins import CreateModelMixin, RetrieveModelMixin, DestroyModelMixin, ListModelMixin
+from rest_framework.generics import CreateAPIView, ListAPIView
+from rest_framework.mixins import CreateModelMixin, DestroyModelMixin, ListModelMixin
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet, GenericViewSet
 
+import parser_top100
 from . import likes_services
 from .filter import AnimeFilter
 from .models import Anime, Genre, Episode, Favorites, Season, Review
-from .permissions import IsAdmin, IsAuthor
+from .permissions import IsAdmin, IsAuthor, IsAuthorFavorites
 from .serializers import AnimeSerializer, SeasonSerializer, EpisodeSerializer, GenreSerializer, FavoritesSerializer, \
-    FavoritesListSerializer, FanSerializer, ReviewSerializer
+    FavoritesListSerializer, FanSerializer, ReviewSerializer, EpisodeToNewSerializer, TopSerializer
+from .tasks import send_mail_task
 
 
 class LikedMixin:
@@ -64,8 +67,20 @@ class AnimeViewSet(ModelViewSet):
         serializer = ReviewSerializer(reviews, context={'request': request}, many=True)
         return Response(serializer.data)
 
+    @action(['GET'], detail=False)
+    def new(self, request):
+        episodes = Episode.objects.all()
+        serializer = EpisodeToNewSerializer(episodes, many=True)
+        new_episodes = []
+        for ordered_dict in serializer.data:
+            if ordered_dict.get('was_published_recently'):
+                ordered_dict.pop('was_published_recently')
+                new_episodes.append(ordered_dict.get('string_for_new'))
+        print(new_episodes)
+        return Response(new_episodes)
+
     def get_permissions(self):
-        if self.action in ['likes', 'list', 'reviews']:
+        if self.action in ['likes', 'list', 'reviews', 'new']:
             return []
         if self.action in ['create', 'destroy', 'update', 'partial_update']:
             return [IsAdmin()]
@@ -79,7 +94,6 @@ class SeasonCreate(CreateAPIView):
 
 
 class GenreViewSet(ModelViewSet):
-    # Добавить/удалить/просмотреть_список жанров
     queryset = Genre.objects.all()
     serializer_class = GenreSerializer
 
@@ -94,9 +108,6 @@ class EpisodeView(CreateModelMixin, DestroyModelMixin, GenericViewSet, LikedMixi
     serializer_class = EpisodeSerializer
     permission_classes = [IsAdmin]
 
-    def get(self, request):
-        data = request.data
-
     def get_permissions(self):
         if self.action in ['like', 'unlike']:
             return [IsAuthenticated()]
@@ -106,7 +117,6 @@ class EpisodeView(CreateModelMixin, DestroyModelMixin, GenericViewSet, LikedMixi
 
 
 class ReviewViewSet(ModelViewSet):
-    # Добавить/удалить/просмотреть_список(action) отзыв(-ов) к аниме
     queryset = Review.objects.all()
     serializer_class = ReviewSerializer
     permission_classes = [IsAuthenticated]
@@ -119,23 +129,40 @@ class ReviewViewSet(ModelViewSet):
         return [IsAdmin()]
 
 
-class FavoritesListView(ListAPIView):
+class FavoritesViewSet(CreateModelMixin, DestroyModelMixin, ListModelMixin, GenericViewSet):
     queryset = Favorites.objects.all()
     permission_classes = [IsAuthenticated]
     serializer_class = FavoritesListSerializer
 
-    def get(self, request):
-        data = request.data
-        serializer = FavoritesListSerializer(data=data, context={'request': request})
-        serializer.is_valid(raise_exception=True)
+    def list(self, request):
+        user = request.user
+        favorites = Favorites.objects.filter(user=user)
+        serializer = FavoritesListSerializer(favorites, many=True)
         return Response(serializer.data)
 
+    def create(self, request):
+        data = request.data
+        serializer = FavoritesSerializer(data=data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        serializer.create()
+        return Response(serializer.data)
 
-class FavoritesCreateView(CreateAPIView):
-    queryset = Favorites.objects.all()
-    serializer_class = FavoritesSerializer
+    def get_permissions(self):
+        if self.action in ['create', 'list']:
+            return [IsAuthenticated()]
+        return [IsAuthorFavorites()]
 
 
-class FavoritesDestroyView(DestroyAPIView):
-    queryset = Favorites.objects.all()
-    serializer_class = FavoritesSerializer
+class SendMailView(ListAPIView):
+    permission_classes = [IsAdmin]
+
+    def list(self, request):
+        users_queryset = get_user_model().objects.all()
+        users = [str(i) for i in users_queryset]
+        send_mail_task.delay(users)
+        return Response('Сообщение отправлено')
+
+
+class TopView(ListAPIView):
+    def get(self, request):
+        return Response(parser_top100.main())

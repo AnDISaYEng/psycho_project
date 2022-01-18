@@ -1,8 +1,11 @@
+import datetime
+
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
+from django.utils import timezone
 
 User = get_user_model()
 
@@ -49,9 +52,18 @@ class Episode(models.Model):
     anime = models.ForeignKey(Anime, on_delete=models.CASCADE, related_name='episodes')
     season = models.ForeignKey(Season, on_delete=models.CASCADE, related_name='episodes')
     likes = GenericRelation(Like)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f'{self.number} серия'
+        return f'{self.name}({self.number} серия)'
+
+    @property
+    def string_for_new(self):
+        return f'{self.anime}: {self.name}({self.number} серия)'
+
+    @property
+    def was_published_recently(self):
+        return self.created_at >= timezone.now() - datetime.timedelta(days=1)
 
 
 class Favorites(models.Model):
